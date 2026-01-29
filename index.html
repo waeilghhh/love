@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Sync</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0f172a; 
+            color: white; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+        }
+        
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #menuBtn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        
+        #menu {
+            position: fixed;
+            top: 70px;
+            left: 15px;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+            min-width: 180px;
+        }
+        
+        #menu.show {
+            display: flex;
+        }
+        
+        #menu button {
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: right;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #videoSection {
+            height: 0;
+            background: black;
+            overflow: hidden;
+            transition: height 0.3s ease;
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        #videoPlayer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #resizeHandle {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background: #3b82f6;
+            cursor: ns-resize;
+            opacity: 0.5;
+        }
+        
+        #chatSection {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .message {
+            background: #1e40af;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-break: break-word;
+        }
+        
+        .message.other {
+            background: #475569;
+            align-self: flex-start;
+        }
+        
+        .message.self {
+            align-self: flex-end;
+        }
+        
+        .message.system {
+            background: #f59e0b;
+            color: #0f172a;
+            align-self: center;
+            text-align: center;
+            max-width: 90%;
+            font-size: 14px;
+        }
+        
+        .input-area {
+            padding: 15px;
+            background: rgba(30, 41, 59, 0.9);
+            border-top: 2px solid #334155;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        #chatInput {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 25px;
+            background: #334155;
+            color: white;
+            font-size: 14px;
+        }
+        
+        #chatInput:focus {
+            outline: 2px solid #3b82f6;
+        }
+        
+        #sendBtn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        #uploadModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .modal-content {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            border: 2px solid #3b82f6;
+        }
+        
+        .upload-area {
+            padding: 30px 20px;
+            text-align: center;
+            border: 2px dashed #3b82f6;
+            border-radius: 10px;
+            margin: 15px 0;
+            cursor: pointer;
+        }
+        
+        #fileInfo {
+            background: #334155;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .code-input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: white;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .modal-btn.primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .modal-btn.secondary {
+            background: transparent;
+            border: 1px solid #475569;
+            color: #94a3b8;
+        }
+        
+        #uploadStatus {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        
+        .info-bar {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        #messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #messages::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <button id="menuBtn">☰</button>
+        
+        <div id="menu">
+            <button id="openVideoBtn">
+                <span>▶️</span>
+                <span>فتح المشغل</span>
+            </button>
+            
+            <button id="closeVideoBtn">
+                <span>⏹️</span>
+                <span>إغلاق المشغل</span>
+            </button>
+            
+            <button id="uploadBtn">
+                <span>📁</span>
+                <span>رفع فيلم</span>
+            </button>
+            
+            <button id="syncBtn">
+                <span>🔄</span>
+                <span>مزامنة</span>
+            </button>
+        </div>
+        
+        <div id="videoSection">
+            <video id="videoPlayer" controls></video>
+            <div id="resizeHandle"></div>
+        </div>
+        
+        <div id="chatSection">
+            <div id="messages"></div>
+            <div class="input-area">
+                <input type="text" id="chatInput" placeholder="اكتب رسالة...">
+                <button id="sendBtn">➤</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-bar">
+        <span>👤</span>
+        <span id="onlineCount">1</span>
+    </div>
+    
+    <div id="uploadModal">
+        <div class="modal-content">
+            <div style="text-align:center;margin-bottom:20px;color:#fbbf24;">رفع فيديو</div>
+            
+            <div>
+                <input type="text" id="uploadUsername" class="code-input" value="أنت" placeholder="اسمك">
+            </div>
+            
+            <div>
+                <input type="password" id="uploadCode" class="code-input" placeholder="أدخل كود التحقق" required>
+                <div style="color:#ef4444;font-size:12px;text-align:center;margin:5px 0;">الكود مطلوب للرفع</div>
+            </div>
+            
+            <div id="fileUploadArea" class="upload-area">
+                📁 اختر ملف فيديو
+            </div>
+            
+            <input type="file" id="fileInput" accept="video/*" style="display:none;">
+            
+            <div id="fileInfo">
+                <div id="fileName"></div>
+            </div>
+            
+            <div id="uploadStatus"></div>
+            
+            <div class="modal-buttons">
+                <button id="cancelUploadBtn" class="modal-btn secondary">إلغاء</button>
+                <button id="uploadFileBtn" class="modal-btn primary" disabled>رفع</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+        });
+        
+        function initApp() {
+            setupEventListeners();
+            connectSocket();
+            addMessage('النظام', 'مرحباً!', 'system');
+        }
+        
+        function connectSocket() {
+            window.socket = io();
+            
+            socket.on('connect', function() {
+                addMessage('النظام', 'تم الاتصال', 'system');
+            });
+            
+            socket.on('user-update', function(data) {
+                updateUsersCount(data.usersCount);
+            });
+            
+            socket.on('new-message', function(data) {
+                const isSelf = data.username === 'أنت';
+                addMessage(data.username, data.message, isSelf ? 'self' : 'other');
+            });
+            
+            socket.on('video-control', function(data) {
+                const player = document.getElementById('videoPlayer');
+                
+                if (Math.abs(player.currentTime - data.currentTime) > 2) {
+                    player.currentTime = data.currentTime;
+                }
+                
+                if (data.isPlaying && player.paused) {
+                    player.play();
+                } else if (!data.isPlaying && !player.paused) {
+                    player.pause();
+                }
+            });
+            
+            socket.on('video-uploaded', function(video) {
+                const player = document.getElementById('videoPlayer');
+                player.src = video.url;
+                addMessage('النظام', `${video.uploader} رفع فيديو: ${video.originalname}`, 'system');
+                openVideoPlayer();
+            });
+            
+            socket.on('sync-video', function(data) {
+                const player = document.getElementById('videoPlayer');
+                player.currentTime = data.currentTime;
+                if (data.isPlaying) {
+                    player.play();
+                } else {
+                    player.pause();
+                }
+            });
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('menuBtn').addEventListener('click', function() {
+                document.getElementById('menu').classList.toggle('show');
+            });
+            
+            document.getElementById('openVideoBtn').addEventListener('click', openVideoPlayer);
+            document.getElementById('closeVideoBtn').addEventListener('click', closeVideoPlayer);
+            document.getElementById('uploadBtn').addEventListener('click', openUploadModal);
+            
+            document.getElementById('syncBtn').addEventListener('click', function() {
+                if (window.socket) {
+                    window.socket.emit('request-sync');
+                }
+                document.getElementById('menu').classList.remove('show');
+            });
+            
+            document.getElementById('fileUploadArea').addEventListener('click', function() {
+                document.getElementById('fileInput').click();
+            });
+            
+            document.getElementById('fileInput').addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const maxSize = 500 * 1024 * 1024; // 500MB
+                    if (file.size > maxSize) {
+                        showStatus('الملف كبير جداً! الحد الأقصى 500MB', 'error');
+                        this.value = '';
+                        return;
+                    }
+                    
+                    document.getElementById('fileInfo').style.display = 'block';
+                    document.getElementById('fileName').textContent = 
+                        `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+                    document.getElementById('uploadFileBtn').disabled = false;
+                }
+            });
+            
+            document.getElementById('uploadFileBtn').addEventListener('click', uploadVideo);
+            document.getElementById('cancelUploadBtn').addEventListener('click', closeUploadModal);
+            
+            document.getElementById('sendBtn').addEventListener('click', sendMessage);
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            const resizeHandle = document.getElementById('resizeHandle');
+            let isDragging = false;
+            let startY, startHeight;
+            
+            resizeHandle.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startY = e.clientY;
+                startHeight = document.getElementById('videoSection').offsetHeight;
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                const delta = e.clientY - startY;
+                const newHeight = startHeight + delta;
+                const minHeight = 150;
+                const maxHeight = window.innerHeight - 200;
+                if (newHeight >= minHeight && newHeight <= maxHeight) {
+                    document.getElementById('videoSection').style.height = newHeight + 'px';
+                }
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+            
+            const player = document.getElementById('videoPlayer');
+            player.addEventListener('play', function() {
+                if (window.socket) {
+                    window.socket.emit('video-control', {
+                        action: 'play',
+                        currentTime: this.currentTime,
+                        isPlaying: true
+                    });
+                }
+            });
+            
+            player.addEventListener('pause', function() {
+                if (window.socket) {
+                    window.socket.emit('video-control', {
+                        action: 'pause',
+                        currentTime: this.currentTime,
+                        isPlaying: false
+                    });
+                }
+            });
+            
+            player.addEventListener('seeked', function() {
+                if (window.socket) {
+                    window.socket.emit('video-control', {
+                        action: 'seek',
+                        currentTime: this.currentTime,
+                        isPlaying: !this.paused
+                    });
+                }
+            });
+            
+            player.addEventListener('timeupdate', function() {
+                if (window.socket && !this.paused) {
+                    window.socket.emit('video-control', {
+                        action: 'timeupdate',
+                        currentTime: this.currentTime,
+                        isPlaying: true
+                    });
+                }
+            });
+            
+            document.addEventListener('click', function(event) {
+                const menu = document.getElementById('menu');
+                const menuBtn = document.getElementById('menuBtn');
+                if (!menu.contains(event.target) && !menuBtn.contains(event.target)) {
+                    menu.classList.remove('show');
+                }
+            });
+            
+            document.getElementById('uploadModal').addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeUploadModal();
+                }
+            });
+        }
+        
+        function openVideoPlayer() {
+            document.getElementById('videoSection').style.height = '50vh';
+            document.getElementById('menu').classList.remove('show');
+        }
+        
+        function closeVideoPlayer() {
+            document.getElementById('videoSection').style.height = '0';
+            document.getElementById('menu').classList.remove('show');
+        }
+        
+        function openUploadModal() {
+            document.getElementById('uploadModal').style.display = 'flex';
+            document.getElementById('menu').classList.remove('show');
+        }
+        
+        function closeUploadModal() {
+            document.getElementById('uploadModal').style.display = 'none';
+            resetUploadForm();
+        }
+        
+        async function uploadVideo() {
+            const file = document.getElementById('fileInput').files[0];
+            const code = document.getElementById('uploadCode').value.trim();
+            
+            if (!file) return showStatus("اختر ملفاً", "error");
+            if (code !== 'halima123') return showStatus("كود التحقق غير صحيح", "error");
+            
+            const formData = new FormData();
+            formData.append('video', file);
+            formData.append('username', document.getElementById('uploadUsername').value || 'مجهول');
+            
+            const uploadBtn = document.getElementById('uploadFileBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'جاري الرفع...';
+            showStatus('جاري الرفع...', 'info');
+            
+            try {
+                const response = await fetch('/api/upload', {method: 'POST', body: formData});
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('تم الرفع بنجاح', 'success');
+                    setTimeout(function() {
+                        closeUploadModal();
+                        openVideoPlayer();
+                    }, 1500);
+                } else {
+                    showStatus(result.error || 'فشل الرفع', 'error');
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'رفع';
+                }
+            } catch (error) {
+                showStatus('خطأ في الاتصال', 'error');
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'رفع';
+            }
+        }
+        
+        function resetUploadForm() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('uploadCode').value = '';
+            document.getElementById('uploadFileBtn').disabled = true;
+            document.getElementById('uploadFileBtn').textContent = 'رفع';
+            document.getElementById('uploadStatus').style.display = 'none';
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            addMessage('أنت', text, 'self');
+            input.value = '';
+            
+            if (window.socket) {
+                window.socket.emit('send-message', {
+                    username: 'أنت',
+                    message: text
+                });
+            }
+        }
+        
+        function addMessage(sender, text, type = 'other') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<div style="font-weight:bold;margin-bottom:3px;">${sender}</div><div>${text}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function showStatus(text, type) {
+            const status = document.getElementById('uploadStatus');
+            status.textContent = text;
+            status.style.color = type === 'success' ? '#10b981' : '#ef4444';
+            if (type === 'info') status.style.color = '#3b82f6';
+            status.style.display = 'block';
+        }
+        
+        function updateUsersCount(count) {
+            document.getElementById('onlineCount').textContent = count;
+        }
+    </script>
+</body>
+</html>
